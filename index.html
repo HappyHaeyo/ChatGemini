@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>개인 API 키로 쓰는 번역/채팅</title>
+  <style>
+    :root{
+      --bg:#f7f8fb; --card:#ffffff; --muted:#667085; --line:#e6e9f2; --accent:#2563eb; --text:#0f172a; --bubble:#f1f5ff; --bubble-me:#e8f4ff;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Pretendard,Apple SD Gothic Neo, Malgun Gothic, sans-serif}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    header{padding:16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(255,255,255,.9);backdrop-filter:blur(8px)}
+    h1{margin:0;font-size:18px}
+    .container{max-width:1100px;margin:16px auto;padding:0 16px;}
+    .layout{display:grid;grid-template-columns:340px 1fr;gap:16px;}개인 API 키 입력 → 브라우저에서 번역/채팅
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+    label{font-size:12px;color:var(--muted)}
+    input[type=text],input[type=password],select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--text)}
+    textarea{min-height:120px;resize:vertical}
+    .row{display:flex;gap:8px;align-items:center}
+    .btn{cursor:pointer;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:600}
+    .btn.secondary{background:#eef2ff;color:#1f3164;border:1px solid #cbd5ff}
+    .eye{cursor:pointer;border:1px solid var(--line);padding:8px;border-radius:10px;background:#fff}
+    .small{font-size:12px;color:var(--muted)}
+    .badge{font-size:11px;padding:2px 6px;border-radius:999px;background:#eef2ff;color:#253369;border:1px solid #cfe0ff}
+
+    /* 채팅 UI */
+    .chatWrap{display:grid;grid-template-rows:1fr auto;gap:12px;height:70vh}
+    .chat{overflow:auto;background:#fafbff;border:1px solid var(--line);border-radius:14px;padding:14px}
+    .msg{display:flex;gap:10px;margin:10px 0;max-width:80%}
+    .msg .bubble{padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--bubble)}
+    .msg.me{margin-left:auto;justify-content:flex-end}
+    .msg.me .bubble{background:var(--bubble-me)}
+    .inputBar{display:flex;gap:8px;align-items:center}
+    .inputBar textarea{height:60px;min-height:60px}
+
+    /* 접는 섹션 */
+    details{border:1px solid var(--line);border-radius:14px;background:var(--card)}
+    details>summary{cursor:pointer;list-style:none;padding:12px 16px;border-radius:14px}
+    details>summary::-webkit-details-marker{display:none}
+    details .content{padding:0 14px 14px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔑 개인 API 키 입력 채팅 테스트</h1>
+    <div class="small">주의: 공개 배포 금지. 로컬/개인용으로만 사용. 데이터시각화 수업용으로만 사용함 API 제돈이에요 잉잉</div>
+  </header>
+
+  <div class="container layout">
+    <!-- 좌측: 설정 패널 -->
+    <aside class="card">
+      <div class="row" style="justify-content:space-between">
+        <strong>API 키 설정</strong>
+        <label class="row" style="gap:6px"><input type="checkbox" id="remember"/> 키 기억하기</label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="width:130px">Google Gemini</label>
+        <div class="row" style="width:100%">
+          <input id="gemini_key" type="password" placeholder="Gemini API 키" autocomplete="off" />
+          <button class="eye" data-target="gemini_key">👁</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="width:130px">OpenAI</label>
+        <div class="row" style="width:100%">
+          <input id="openai_key" type="password" placeholder="OpenAI API 키" autocomplete="off" />
+          <button class="eye" data-target="openai_key">👁</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="width:130px">Anthropic</label>
+        <div class="row" style="width:100%">
+          <input id="anthropic_key" type="password" placeholder="Anthropic API 키" autocomplete="off" />
+          <button class="eye" data-target="anthropic_key">👁</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="width:130px">Cohere</label>
+        <div class="row" style="width:100%">
+          <input id="cohere_key" type="password" placeholder="Cohere API 키" autocomplete="off" />
+          <button class="eye" data-target="cohere_key">👁</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px;gap:10px">
+        <button class="btn secondary" id="clear_keys">키 지우기</button>
+        <span class="small">일부 공급자는 브라우저 CORS 제한이 있습니다.</span>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0"/>
+
+      <strong>모드 · 모델 선택</strong>
+      <div class="row" style="margin-top:8px">
+        <label style="width:120px">모드</label>
+        <select id="mode">
+          <option value="translate">번역</option>
+          <option value="chat" selected>채팅</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="width:120px">프로바이더</label>
+        <select id="provider">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="gemini" selected>Google Gemini</option>
+          <option value="cohere">Cohere</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="width:120px">모델</label>
+        <input id="model" type="text" placeholder="예: gpt-4o-mini / claude-3-7-sonnet / gemini-1.5-pro" value="gemini-1.5-pro" />
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="width:120px">목표 언어(번역)</label>
+        <input id="target_lang" type="text" placeholder="예: 한국어 / English / 日本語" value="한국어" />
+      </div>
+
+      <details style="margin-top:14px">
+        <summary><strong>간단 프록시 (선택) </strong><span class="small">— 클릭하여 열기</span></summary>
+        <div class="content">
+          <div class="small" style="margin:8px 0">브라우저에서 직접 호출이 막히면, 아래처럼 초간단 Node 프록시를 로컬에서 실행하세요. 키는 서버 환경변수로 관리.</div>
+          <pre style="white-space:pre-wrap;background:#f8fafc;border:1px solid var(--line);padding:10px;border-radius:12px;max-height:260px;overflow:auto"># server.js
+import express from 'express';
+import fetch from 'node-fetch';
+import 'dotenv/config';
+const app = express();
+app.use(express.json({limit:'2mb'}));
+app.post('/openai', async (req,res)=>{
+  const r = await fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Authorization':`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},
+    body: JSON.stringify(req.body)
+  });
+  res.status(r.status).json(await r.json());
+});
+app.listen(8787,()=>console.log('proxy on :8787'));
+
+# .env
+OPENAI_API_KEY=sk-...
+
+# 실행
+npm i express node-fetch dotenv
+node server.js</pre>
+        </div>
+      </details>
+    </aside>
+
+    <!-- 우측: 채팅 영역 -->
+    <main class="card">
+      <div class="chatWrap">
+        <div id="chat" class="chat">
+          <!-- messages will appear here -->
+          <div class="msg"><div class="bubble"><strong>시스템</strong><br/>환영합니다. 아래 입력창에 메시지를 쓰고 Enter 또는 보내기 버튼을 누르세요.</div></div>
+        </div>
+        <div class="inputBar">
+          <textarea id="input_text" placeholder="메시지를 입력하세요"></textarea>
+          <button id="run" class="btn">보내기</button>
+          <button id="stop" class="btn secondary">중지</button>
+          <span class="badge" id="status">idle</span>
+        </div>
+      </div>
+      <div class="small" style="margin-top:8px">번역 모드 프롬프트: 의미/어조 보존, 과번역 금지, 숫자·고유명사 정확, 코드/마크업 유지, 결과만 출력.</div>
+    </main>
+  </div>
+
+<script>
+// ---------- key memory ----------
+const remember = document.getElementById('remember');
+const keyIds = ['openai_key','anthropic_key','gemini_key','cohere_key'];
+function loadKeys(){
+  const save = localStorage.getItem('remember_keys') === '1';
+  remember.checked = save;
+  if(save){ keyIds.forEach(id=>{ const v = localStorage.getItem(id)||''; document.getElementById(id).value = v; }); }
+}
+function maybeSaveKeys(){
+  if(remember.checked){
+    localStorage.setItem('remember_keys','1');
+    keyIds.forEach(id=>localStorage.setItem(id, document.getElementById(id).value || ''));
+  } else {
+    localStorage.removeItem('remember_keys'); keyIds.forEach(id=>localStorage.removeItem(id));
+  }
+}
+loadKeys();
+remember.addEventListener('change', maybeSaveKeys);
+for (const btn of document.querySelectorAll('.eye')){
+  btn.addEventListener('click', ()=>{ const id = btn.dataset.target; const el = document.getElementById(id); el.type = (el.type==='password'?'text':'password'); });
+}
+document.getElementById('clear_keys').onclick = ()=>{ keyIds.forEach(id=>document.getElementById(id).value=''); maybeSaveKeys(); };
+
+// ---------- chat helpers ----------
+const chat = document.getElementById('chat');
+const statusBadge = document.getElementById('status');
+const input = document.getElementById('input_text');
+let aborter = null;
+function setStatus(s){ statusBadge.textContent = s; }
+function addMsg(text, me=false){
+  const wrap = document.createElement('div'); wrap.className = 'msg'+(me?' me':'');
+  const b = document.createElement('div'); b.className='bubble'; b.textContent = text; wrap.appendChild(b); chat.appendChild(wrap); chat.scrollTop = chat.scrollHeight;
+}
+function sysPrompt(mode, target){
+  if(mode==='translate'){
+    return `You are a precise translator. Translate the user's text into ${target}. Keep meaning and tone. Do not add explanations. Preserve numbers, code, markup, and line breaks. Output translation only.`;
+  }
+  return `You are a helpful, concise assistant. Reply in the user's language unless asked otherwise.`;
+}
+
+// ---------- Providers ----------
+async function callOpenAI({key, model, messages}){
+  const url = 'https://api.openai.com/v1/chat/completions';
+  const r = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`}, body: JSON.stringify({model, messages, temperature:0.2}) });
+  if(!r.ok) throw new Error(`OpenAI ${r.status}`);
+  const j = await r.json(); return j.choices?.[0]?.message?.content?.trim() || '';
+}
+async function callAnthropic({key, model, messages}){
+  const sys = messages.find(m=>m.role==='system')?.content || '';
+  const userParts = messages.filter(m=>m.role!=='system').map(m=>({role: m.role==='user'?'user':'assistant', content: m.content}));
+  const r = await fetch('https://api.anthropic.com/v1/messages',{ method:'POST', headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'}, body: JSON.stringify({model, system: sys, messages: userParts, max_tokens:2048, temperature:0.2}) });
+  if(!r.ok) throw new Error(`Anthropic ${r.status}`);
+  const j = await r.json(); return (j.content && j.content[0] && j.content[0].text) ? j.content[0].text.trim() : '';
+}
+async function callGemini({key, model, messages}){
+  const sys = messages.find(m=>m.role==='system')?.content || '';
+  const user = messages.filter(m=>m.role!=='system').map(m=> (m.role==='user'? m.content : `Assistant: ${m.content}`)).join('\n');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+  const r = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contents:[{role:'user', parts:[{text: sys + "\n" + user}]}], generationConfig:{temperature:0.2} }) });
+  if(!r.ok) throw new Error(`Gemini ${r.status}`);
+  const j = await r.json(); return j.candidates?.[0]?.content?.parts?.map(p=>p.text).join('')?.trim() || '';
+}
+async function callCohere({key, model, messages}){
+  const sys = messages.find(m=>m.role==='system')?.content || '';
+  const user = messages.filter(m=>m.role!=='system').map(m=> (m.role==='user'? m.content : `Assistant: ${m.content}`)).join('\n');
+  const r = await fetch('https://api.cohere.ai/v1/chat',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`}, body: JSON.stringify({model, preamble:sys, message:user, temperature:0.2}) });
+  if(!r.ok) throw new Error(`Cohere ${r.status}`);
+  const j = await r.json(); return j.text?.trim() || '';
+}
+
+async function runOnce(){
+  try{
+    setStatus('running');
+    const mode = document.getElementById('mode').value;
+    const provider = document.getElementById('provider').value;
+    const model = (document.getElementById('model').value||'').trim() || (
+      provider==='openai' ? 'gpt-4o-mini' : provider==='anthropic' ? 'claude-3-7-sonnet' : provider==='gemini' ? 'gemini-1.5-pro' : 'command-r-plus'
+    );
+    const target = document.getElementById('target_lang').value || '한국어';
+    const text = input.value.trim(); if(!text){ setStatus('idle'); return; }
+
+    addMsg(text,true);
+    input.value='';
+
+    const messages = [ {role:'system', content: sysPrompt(mode, target)}, {role:'user', content: text} ];
+    let key = '', out = '';
+    if(provider==='openai'){ key = document.getElementById('openai_key').value.trim(); if(!key) throw new Error('OpenAI 키가 없습니다.'); out = await callOpenAI({key, model, messages}); }
+    else if(provider==='anthropic'){ key = document.getElementById('anthropic_key').value.trim(); if(!key) throw new Error('Anthropic 키가 없습니다.'); out = await callAnthropic({key, model, messages}); }
+    else if(provider==='gemini'){ key = document.getElementById('gemini_key').value.trim(); if(!key) throw new Error('Gemini 키가 없습니다.'); out = await callGemini({key, model, messages}); }
+    else { key = document.getElementById('cohere_key').value.trim(); if(!key) throw new Error('Cohere 키가 없습니다.'); out = await callCohere({key, model, messages}); }
+
+    addMsg(out || '(빈 응답)'); setStatus('done');
+  } catch(err){ addMsg('오류: '+(err?.message||err)); setStatus('error'); }
+}
+
+document.getElementById('run').onclick = runOnce;
+document.getElementById('stop').onclick = ()=>{ if(aborter){ aborter.abort(); setStatus('stopped'); } };
+input.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); runOnce(); }});
+</script>
+</body>
+</html>
